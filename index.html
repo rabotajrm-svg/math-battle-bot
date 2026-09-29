@@ -2,319 +2,124 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Math Battle Reverse</title>
-    <script src="https://telegram.org/js/games.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Battle</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap');
-
-        * {
-            box-sizing: border-box;
-            user-select: none;
-        }
-
         body {
             margin: 0;
             padding: 0;
-            background-color: #ffffff;
-            font-family: 'Comic Neue', cursive, sans-serif;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* Yashil doska va yog'och ramka */
-        .board-container {
-            position: relative;
-            background-color: #3C948B;
-            border-bottom: 14px solid #DFDFC5;
-            flex: 1;
+            font-family: Arial, sans-serif;
+            background-color: #439A86;
+            color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            color: #ffffff;
+            height: 100vh;
+            text-align: center;
         }
-
-        .score-header {
-            position: absolute;
-            top: 15px;
-            font-size: 22px;
+        .score-title {
+            font-size: 20px;
+            font-weight: bold;
             letter-spacing: 1px;
-            font-weight: bold;
+            margin-bottom: 5px;
         }
-
-        .equation-box {
-            text-align: center;
-            font-size: 58px;
-            font-weight: bold;
-            line-height: 1.3;
-        }
-
-        .game-title {
-            font-size: 52px;
-            font-weight: bold;
-            text-align: center;
-            letter-spacing: 2px;
-        }
-
-        .final-score-box {
-            text-align: center;
-        }
-
-        .final-score-title {
-            font-size: 28px;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-        }
-
-        .final-score-num {
-            font-size: 72px;
+        .score-value {
+            font-size: 64px;
             font-weight: bold;
             margin-bottom: 30px;
         }
-
-        .leaderboard-row {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            padding: 8px 25px;
-            font-size: 24px;
+        .leaderboard-item {
+            width: 80%;
+            max-width: 320px;
+            background-color: rgba(255, 255, 255, 0.4);
+            border-radius: 8px;
+            padding: 12px 15px;
             display: flex;
             justify-content: space-between;
-            width: 280px;
-        }
-
-        /* Progress-bar (Vaqt indikatori) */
-        .timer-container {
-            position: absolute;
-            bottom: 12px;
-            width: 90%;
-            height: 14px;
-            background-color: rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .timer-bar {
-            width: 100%;
-            height: 100%;
-            background-color: #ffffff;
-            border-radius: 10px;
-            transition: width 0.1s linear;
-        }
-
-        /* Tugmalar joylashuvi */
-        .controls-container {
-            height: 32vh;
-            background-color: #ffffff;
-            display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 35px;
+            font-size: 18px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-
-        .btn-circle {
-            width: 110px;
-            height: 110px;
+        .restart-btn {
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             border: none;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            background-color: #317B6C;
+            color: white;
+            font-size: 32px;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-            outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
-
-        .btn-circle:active {
-            transform: scale(0.92);
-        }
-
-        .btn-play { background-color: #3C948B; }
-        .btn-check { background-color: #3C948B; }
-        .btn-cross { background-color: #E28888; }
-
-        .svg-icon {
-            fill: none;
-            stroke: #ffffff;
-            stroke-width: 5;
-            stroke-linecap: round;
-            stroke-linejoin: round;
+        .restart-btn:active {
+            transform: scale(0.95);
         }
     </style>
 </head>
 <body>
 
-    <!-- 1. Boshlang'ich sahifa -->
-    <div id="start-screen" style="display: flex;" class="board-container">
-        <div class="game-title">MATH BATTLE</div>
+    <div class="score-title">YOUR SCORE</div>
+    <div class="score-value" id="currentScore">0</div>
+
+    <div class="leaderboard-item">
+        <span id="playerName">1. Player</span>
+        <span id="playerScore">0</span>
     </div>
 
-    <!-- 2. O'yin sahifasi -->
-    <div id="game-screen" style="display: none;" class="board-container">
-        <div class="score-header" id="score-text">SCORE: 0</div>
-        <div class="equation-box">
-            <div id="expr-line">10 / 10</div>
-            <div id="ans-line">= 1</div>
-        </div>
-        <div class="timer-container">
-            <div class="timer-bar" id="timer-bar"></div>
-        </div>
-    </div>
-
-    <!-- 3. Natija sahifasi -->
-    <div id="end-screen" style="display: none;" class="board-container">
-        <div class="final-score-box">
-            <div class="final-score-title">YOU SCORED</div>
-            <div class="final-score-num" id="final-score">0</div>
-            <div class="leaderboard-row">
-                <span id="player-name">1. Player</span>
-                <span id="player-score">0</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Pastki tugmalar -->
-    <div class="controls-container">
-        <button class="btn-circle btn-play" id="btn-play" onclick="startGame()">
-            <svg width="45" height="45" viewBox="0 0 24 24" fill="#ffffff">
-                <path d="M8 5v14l11-7z"/>
-            </svg>
-        </button>
-
-        <button class="btn-circle btn-check" id="btn-check" style="display: none;" onclick="handleAnswer(true)">
-            <svg class="svg-icon" width="50" height="50" viewBox="0 0 24 24">
-                <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-        </button>
-
-        <button class="btn-circle btn-cross" id="btn-cross" style="display: none;" onclick="handleAnswer(false)">
-            <svg class="svg-icon" width="50" height="50" viewBox="0 0 24 24">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        </button>
-
-        <button class="btn-circle btn-play" id="btn-restart" style="display: none;" onclick="startGame()">
-            <svg width="50" height="50" viewBox="0 0 24 24" class="svg-icon">
-                <path d="M23 4v6h-6"></path>
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
-        </button>
-    </div>
+    <button class="restart-btn" onclick="restartGame()">↻</button>
 
     <script>
-        let score = 0;
-        let timeLeft = 100;
-        let timerInterval = null;
-        let isCorrectEquation = false;
+        const tg = window.Telegram?.WebApp;
 
-        function showScreen(screenId) {
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'none';
-            document.getElementById('end-screen').style.display = 'none';
-            document.getElementById(screenId).style.display = 'flex';
-        }
-
-        function generateProblem() {
-            const ops = ['+', '-', '*', '/'];
-            const op = ops[Math.floor(Math.random() * ops.length)];
-            let num1, num2, correctAns;
-
-            if (op === '+') {
-                num1 = Math.floor(Math.random() * 100) + 1;
-                num2 = Math.floor(Math.random() * 100) + 1;
-                correctAns = num1 + num2;
-            } else if (op === '-') {
-                num1 = Math.floor(Math.random() * 100) + 1;
-                num2 = Math.floor(Math.random() * num1) + 1;
-                correctAns = num1 - num2;
-            } else if (op === '*') {
-                num1 = Math.floor(Math.random() * 15) + 1;
-                num2 = Math.floor(Math.random() * 15) + 1;
-                correctAns = num1 * num2;
-            } else if (op === '/') {
-                num2 = Math.floor(Math.random() * 10) + 1;
-                correctAns = Math.floor(Math.random() * 10) + 1;
-                num1 = num2 * correctAns;
+        function initGame() {
+            if (tg) {
+                tg.ready();
+                tg.expand();
             }
 
-            isCorrectEquation = Math.random() > 0.5;
-            let displayAns = correctAns;
-
-            if (!isCorrectEquation) {
-                let offset = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
-                displayAns = correctAns + offset;
-                if (displayAns === correctAns) displayAns += 1;
-            }
-
-            document.getElementById('expr-line').innerText = `${num1} ${op === '*' ? '×' : op} ${num2}`;
-            document.getElementById('ans-line').innerText = `= ${displayAns}`;
-        }
-
-        function startGame() {
-            score = 0;
-            timeLeft = 100;
-            document.getElementById('score-text').innerText = "SCORE: 0";
-
-            showScreen('game-screen');
-            document.getElementById('btn-play').style.display = 'none';
-            document.getElementById('btn-restart').style.display = 'none';
-            document.getElementById('btn-check').style.display = 'flex';
-            document.getElementById('btn-cross').style.display = 'flex';
-
-            generateProblem();
-            clearInterval(timerInterval);
-
-            timerInterval = setInterval(() => {
-                timeLeft -= 1.5;
-                if (timeLeft <= 0) {
-                    timeLeft = 0;
-                    endGame();
+            // Telegram orqali user ma'lumotlarini olish
+            let userName = "Player";
+            if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const u = tg.initDataUnsafe.user;
+                userName = u.username ? `@${u.username}` : (u.first_name || "Player");
+            } else {
+                // Agar WebApp parametridan user_id/name o'qish kelsa:
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('name')) {
+                    userName = urlParams.get('name');
                 }
-                document.getElementById('timer-bar').style.width = timeLeft + '%';
-            }, 100);
-        }
-
-        function handleAnswer(userThoughtCorrect) {
-            let isUserRight = (userThoughtCorrect === isCorrectEquation);
-
-            // TESKARI QOIDA:
-            if (!isUserRight) {
-                // Noto'g'ri javob berilsa -> Ball va vaqt qo'shiladi!
-                score += 1;
-                timeLeft = Math.min(100, timeLeft + 15);
-            } else {
-                // To'g'ri javob berilsa -> Vaqt 25% kamayadi!
-                timeLeft -= 25;
             }
 
-            document.getElementById('score-text').innerText = "SCORE: " + score;
-            document.getElementById('timer-bar').style.width = timeLeft + '%';
+            // O'yindagi ball (Bu yerga o'yiningizdagi haqiqiy score mantiqini qo'ying)
+            let score = Math.floor(Math.random() * 40) + 10; 
 
-            if (timeLeft <= 0) {
-                endGame();
-            } else {
-                generateProblem();
+            // Ekranda ko'rsatish
+            document.getElementById("currentScore").innerText = score;
+            document.getElementById("playerName").innerText = `1. ${userName}`;
+            document.getElementById("playerScore").innerText = score;
+
+            // Telegram Botga natijani yuborish
+            if (tg) {
+                tg.sendData(JSON.stringify({
+                    score: score,
+                    username: userName
+                }));
             }
         }
 
-        function endGame() {
-            clearInterval(timerInterval);
-            showScreen('end-screen');
-
-            document.getElementById('btn-check').style.display = 'none';
-            document.getElementById('btn-cross').style.display = 'none';
-            document.getElementById('btn-restart').style.display = 'flex';
-
-            document.getElementById('final-score').innerText = score;
-            document.getElementById('player-score').innerText = score;
-
-            if (window.TelegramGameProxy) {
-                TelegramGameProxy.postEvent('setScore', { score: score });
-            }
+        function restartGame() {
+            location.reload();
         }
+
+        // Sahifa yuklanishi bilan ishga tushirish
+        window.onload = initGame;
     </script>
 </body>
 </html>

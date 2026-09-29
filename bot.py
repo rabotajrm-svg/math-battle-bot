@@ -1,58 +1,49 @@
 import os
+import json
 import logging
 import asyncio
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Logging sozlamalari
 logging.basicConfig(level=logging.INFO)
 
-# O'zgaruvchilarni olish (Railway Environment Variables yoki to'g'ridan-to'g'ri string)
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8837550445:AAHf07Q7EooDoyObC8reK8A_F2GkBaFV2Nw")
 GAME_URL = os.getenv("GAME_URL", "math-battle-reverse-2z1fqmcws-lynx-fb43.vercel.app/index.html")
-GAME_SHORT_NAME = "math_battle_reverse"  # BotFather'dan o'yinga bergan short_name ingiz
+GAME_SHORT_NAME = "math_battle_reverse"  # BotFather'dagi o'yin nomi
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 
-# 1. Start va Game yuborish
+# 1. Start va O'yin xabarini yuborish
 @dp.message(CommandStart())
 async def start_handler(message: types.Message):
-    """Foydalanuvchi yoki guruhga o'yin xabarini yuborish."""
     await bot.send_game(
         chat_id=message.chat.id,
         game_short_name=GAME_SHORT_NAME
     )
 
 
-# 2. O'yinni boshlash tugmasi bosilganda (CallbackQuery)
+# 2. O'ynash tugmasi bosilganda WebApp ochish
 @dp.callback_query(F.game_short_name)
 async def game_callback_handler(callback: types.CallbackQuery):
-    """
-    O'yinchiga HTML5 o'yin havolasini (Vercel URL) ochib beradi.
-    Telegram Game API uchun url callback.game_short_name bilan mos bo'lishi kerak.
-    """
-    await callback.answer(url=f"{GAME_URL}?user_id={callback.from_user.id}")
+    user = callback.from_user
+    name = f"@{user.username}" if user.username else user.first_name
+    # URL ga ism va ID ni biriktirib yuboramiz
+    web_url = f"{GAME_URL}?user_id={user.id}&name={name}"
+    await callback.answer(url=web_url)
 
 
-# 3. WebApp'dan kelgan natijani qabul qilish va Telegram Game API'ga saqlash
+# 3. WebApp'dan natija kelganda Telegram Game API ga saqlash
 @dp.message(F.web_app_data)
 async def web_app_data_handler(message: types.Message):
-    """
-    index.html'dan Telegram.WebApp.sendData() orqali kelgan natijani (score)
-    Telegram serveriga saqlash va guruhda e'lon qilish.
-    """
-    import json
     try:
         data = json.loads(message.web_app_data.data)
         score = int(data.get("score", 0))
-
         user = message.from_user
-        user_display_name = f"@{user.username}" if user.username else user.first_name
+        user_name = f"@{user.username}" if user.username else user.first_name
 
-        # Telegram Game API'ga ochkoni saqlaymiz
+        # Telegram High Scores (Game API) bazasiga saqlash
         await bot.set_game_score(
             user_id=user.id,
             score=score,
@@ -62,56 +53,51 @@ async def web_app_data_handler(message: types.Message):
         )
 
         await message.answer(
-            f"🎮 **O‘yin tugadi!**\n"
-            f"👤 O‘yinchi: **{user_display_name}**\n"
-            f"🏆 Natija: **{score} ball**",
+            f"🎯 **Natija saqlandi!**\n"
+            f"👤 O‘yinchi: **{user_name}**\n"
+            f"🏆 Ball: **{score}**\n\n"
+            f"Guruhdagi umumiy o‘rinlarni ko‘rish uchun `/top` deb yozing.",
             parse_mode="Markdown"
         )
     except Exception as e:
         logging.error(f"Score saqlashda xatolik: {e}")
 
 
-# 4. Guruhdagi umumiy reytingni (Leaderboard) ko'rsatish
+# 4. Guruhdagi umumiy reyting (Leaderboard / Rating)
 @dp.message(Command("top"))
 async def top_scores_handler(message: types.Message):
-    """
-    Guruhdagi eng yuqori natijaga ega o'yinchilar ro'yxatini chiqaradi.
-    Eslatma: Bu buyruq o'yin xabariga 'Reply' qilib yuborilganda yoki guruhda ishlaydi.
-    """
     try:
-        # Agar xabarga reply qilingan bo'lsa, o'sha xabarning message_id si olinadi
-        target_message_id = message.reply_to_message.message_id if message.reply_to_message else message.message_id
+        # Xabarga javob (reply) qilingan bo'lsa o'sha game_message_id olinadi
+        target_msg_id = message.reply_to_message.message_id if message.reply_to_message else message.message_id
 
         high_scores = await bot.get_game_high_scores(
             user_id=message.from_user.id,
             chat_id=message.chat.id,
-            message_id=target_message_id
+            message_id=target_msg_id
         )
 
         if not high_scores:
             await message.answer("Ushbu chatda hali hech kim natija ko‘rsatgani yo‘q.")
             return
 
-        leaderboard_text = "🏆 **Guruhdagi eng yaxshi natijalar:**\n\n"
+        leaderboard_text = "🏆 **GURUH REYTINGI (TOP O'YINCHILAR):**\n\n"
         for rank, entry in enumerate(high_scores, start=1):
             u = entry.user
             name = f"@{u.username}" if u.username else u.first_name
-            leaderboard_text += f"{rank}. {name} — **{entry.score}** ball\n"
+            leaderboard_text += f"{rank}. **{name}** — {entry.score} ball\n"
 
         await message.answer(leaderboard_text, parse_mode="Markdown")
 
     except Exception as e:
-        logging.error(f"Top natijalarni olishda xatolik: {e}")
+        logging.error(f"Top reyting xatosi: {e}")
         await message.answer(
-            "Natijalarni ko‘rish uchun `/top` buyrug‘ini bot yuborgan **O‘yin xabariga reply** (javob) qilib yuboring."
+            "Reytingni ko‘rish uchun `/top` buyrug‘ini bot yuborgan **O‘yin xabariga reply (javob)** qilib yuboring."
         )
 
 
-# Botni ishga tushirish funksiyasi
 async def main():
-    # Eski Webhook va kelib tushgan ortiqcha so'rovlarni o'chirish
     await bot.delete_webhook(drop_pending_updates=True)
-    logging.info("Bot 24/7 rejimida ishga tushdi...")
+    logging.info("Bot tayyor va 24/7 rejimda ishga tushdi...")
     await dp.start_polling(bot)
 
 
